@@ -2,8 +2,6 @@
 
 This repository contains the R code used for the metabolomics analyses presented in *Liver-like glycogen metabolism supports glycolysis in naked mole-rat heart during ischemia*.
 
-The analyses include LC-MS metabolomics data from mouse and naked mole-rat tissues following ischemia, as well as neonatal mouse samples.
-
 ## Analyses
 
 The repository contains the code used for the following analyses:
@@ -19,7 +17,7 @@ The repository contains the code used for the following analyses:
 
 ## LC-MS data processing
 
-Raw metabolite intensity tables were generated using TraceFinder or Compound Discoverer and processed in R using MetaProViz.
+Raw metabolite intensity tables were generated using TraceFinder or Compound Discoverer and processed in R using an early version of MetaProViz.
 
 For the analyses corresponding to Figures 1B–1H, feature filtering was performed using the 80% filtering rule per condition, followed by half-minimum missing value imputation, total ion count (TIC) normalisation and outlier detection based on Hotelling's T2.
 
@@ -35,28 +33,13 @@ The R scripts required to reproduce the analyses can be found in the correspondi
 - `Figure1 Ischemia_risk_and_adj_zone/2024_Maria_MSJ01/frezzaMetaboAnalysis/FeatureSelection/Analysis.Rmd`
 - `Figure3 Neonatal_mouse_mouse_NMR/Analysis.R`
 
-The scripts include data preprocessing, normalisation, PCA, clustering and generation of the corresponding visualisations.
-
-PCA was performed using `prcomp`. K-means clustering and selection of the number of clusters using the silhouette method were performed using the `factoextra` and `cluster` packages. Heatmaps were generated using `pheatmap`.
-
-Additional data manipulation and visualisation were performed using `tidyverse`, `reshape2` and `readxl`.
+The scripts include data preprocessing, normalisation, PCA, clustering and generation of the corresponding boxplot and lineplot visualisations.
 
 ## Data
 
-The metabolomics data associated with this study are deposited on Zenodo under DOI: `10.5281/zenodo.21979323`.
+The input data required to reproduce the R analyses are included in the corresponding analysis folders in this repository.
 
-The input tables required to reproduce the R analyses are provided in the corresponding analysis folders.
+The raw metabolomics data associated with this study are deposited on Zenodo under DOI: `10.5281/zenodo.21979323`.
 
 LC-MS data acquisition was performed by the Frezza Laboratory, CECAD Research Center, Faculty of Medicine and University Hospital Cologne, Germany.
 
-## Software
-
-The analyses were performed in R. Major packages include:
-
-- MetaProViz
-- tidyverse
-- factoextra
-- cluster
-- pheatmap
-- reshape2
-- readxl
