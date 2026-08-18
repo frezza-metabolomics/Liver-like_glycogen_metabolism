@@ -1,0 +1,191 @@
+---
+title: "Untargeted Metabolomics Analysis"
+author:
+  - name: Dimitrios Prymidis
+    affiliation:
+    - Cologne Universiy
+  - name: Theodoros Georgomanolis
+    affiliation:
+    - Cologne Universiy
+date: 
+output: 
+  html_document:
+    self_contained: true
+    toc: true
+    toc_float: trues
+    toc_depth: 5
+    code_folding: show
+vignette: >
+  %\VignetteIndexEntry{Untargeted Metabolomics Analysis}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+bibliography: bibliography.bib
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r chunk_setup, include = FALSE}
+knitr::opts_chunk$set(
+    collapse = TRUE,
+    comment = "#>"
+)
+```
+
+#0. Set up and installations
+```{r message=FALSE, warning=FALSE Dependencies #0. Load libraries and fix directories}
+# In order to run the pipeline, the folder "frezzaMetaboAnalysis" from Github has to be inside the '5. ProjectCode Analysed Data' inside the ProjectFolder. The ProjectFolder has to have the name set as 'Year_name_ProjectCode'. Then, find project folder in the windows explorer, copy the file path and run the next line
+
+## Set project folder
+#convert_clip <- function() {gsub("\\\\", "/", readClipboard())}  
+ProjectFolder <- "../../"   
+#ProjectFolder <-  "X:/1. Mass Spec Projects/REZNICK/Amanda BUNDGAARD/2024_Maria_MSJ01"
+## Set working directory
+setwd(ProjectFolder) 
+
+ProjectFolder <- getwd()
+## Set script paths
+scriptpath <- file.path(ProjectFolder,"frezzaMetaboAnalysis/FeatureSelection/Scripts")
+
+
+## Load packages
+# usethis::edit_file(file.path(scriptpath,"LoadPackages.R"))
+source(file.path(scriptpath,"LoadPackages.R"))
+LoadPackages()
+
+## Set up output folders
+# usethis::edit_file(file.path(scriptpath,"MakeOutputFolders.R"))
+source(file.path(scriptpath,"MakeOutputFolders.R"))
+Folder_paths <- MakeOutputFolders(ProjectFolder=ProjectFolder, OutputFolderName = NULL)
+  
+```
+
+
+#1. First we have to prepare the data for Analysis.
+```{r  eval = FALSE}
+# usethis::edit_file(file.path(scriptpath,"RawDataPreparation.R"))
+source(file.path(scriptpath,"RawDataPreparation.R"))
+RawDataPrepared <- RawDataPreparation(Folder_paths = Folder_paths,
+                                     scriptpath = scriptpath,
+                                     CDInputFolder = NULL,
+                                     Input_SettingsInfo = c(Conditions = "Conditions",PoolSamples = "Pool"),
+                                     OutputName = NULL,
+                                     ForceRun = T)
+
+```
+
+#2. PreBinner Analysis
+```{r  eval = FALSE}
+# usethis::edit_file(file.path(scriptpath,"PreBinnerAnalysis.R"))
+source((file.path(scriptpath,"PreBinnerAnalysis.R")))
+PreBinnerAnalysis(Folder_paths = Folder_paths,
+                  scriptpath = scriptpath,
+                  CDInputFolder = NULL, #  CDInputFolder = "test"
+                  FolderName = NULL,
+                  InputData = RawDataPrepared,
+                  RemoveOutlierSamples = TRUE,
+               #   SampleVector = "MSJ01_MM_050",
+                  Input_SettingsInfo = c(Conditions = "Conditions",PoolSamples = "Pool"),
+                  OutputName = NULL,
+                  ForceRun =FALSE)
+```
+
+
+#3. PostBinnerDataPreparation
+
+```{r eval = FALSE}
+# In here we have to add a module of duplicated feature removal. When we take the mzs of positive and negative. calculate the neutral mass and compare the 2 datasets to see if a compound was identified in both modes. We then somehow have to chose one of the two modes for each compound and remove the other.
+
+# usethis::edit_file(file.path(scriptpath,"PostBinnerDataPreparation.R"))
+source((file.path(scriptpath,"PostBinnerDataPreparation.R")))
+PostBinnerDataPreparation(Folder_paths = Folder_paths,
+                                      scriptpath = scriptpath,
+                                      CDInputFolder = NULL)
+```
+The output is in the Results/PreBinner_folder the name of: Data_clean_XXXX.xlsx
+
+
+#4. Data Preprocessing
+
+```{r}
+# usethis::edit_file(file.path(scriptpath,"Preprocessing.R"))
+source((file.path(scriptpath,"Preprocessing.R")))
+Preprocessing_res <- Preprocessing(Folder_paths = Folder_paths,
+                                   scriptpath = scriptpath,
+                                   FolderName = NULL,
+                                   OutputName = NULL,
+                                   ForceRun = FALSE,
+                                   Input_SettingsInfo = c(Conditions = "Conditions",
+                                                          PoolSamples = "Pool", 
+                                                          Biological_Replicates = "Biological Replicate",
+                                                          Analytical_Replicates = "Technical Replicate"),
+                                   RemoveOutlierSamples = FALSE, 
+                                   SampleVector = NULL,
+                                   ReplicateSum = FALSE,
+                                   CoRe = FALSE)
+
+
+```
+ 
+
+
+# Create and save metabolite boxplots with annotations
+ 
+```{r}
+DMA_data <- Preprocessing_res$processedData[,-c(1:grep("Outliers", colnames( Preprocessing_res$processedData)))]
+DMA_SettingsFile <- Preprocessing_res$processedData[,c(1:grep("Outliers", colnames( Preprocessing_res$processedData)))]
+
+## Add annotations to the end result table
+# Annotations <- readxl::read_xlsx(file.path( Folder_paths$PreBinnerFolder, "Raw_Data_Annotated.xlsx"))
+
+Annotations <-  readxl::read_xlsx( paste0(ProjectFolder, "/3. MSJ01 CD Data/Compounds_MSj01_CD_list.xlsx"))
+
+Annotations <- Annotations %>%
+  mutate(Name = if_else(Tags != "A", paste0(Name, "*"), Name))
+
+
+Annotations$Metabolite <- paste0(Annotations$`m/z`, "_", Annotations$`RT [min]`)
+
+Annotations <- Annotations %>% select(Name, Metabolite)
+
+
+DMA_data <- Preprocessing_res$processedData[,-c(1:grep("Outliers", colnames( Preprocessing_res$processedData)))]
+DMA_data <- t(DMA_data)
+DMA_data <- rownames_to_column(as.data.frame(DMA_data), "Metabolite")
+tmp <- merge(Annotations, DMA_data, "Metabolite")
+
+
+rownames(tmp) <- tmp$Name
+tmp <- tmp[,-c(1,2)]
+tmp <- as.data.frame(t(tmp))
+
+write.csv(tmp, paste0(Folder_paths$AnalysedDataFolder, "/Data_processed.csv"))
+tmp <- read.csv(paste0(Folder_paths$AnalysedDataFolder, "/Data_processed.csv"))%>% column_to_rownames("X")
+colnames(tmp) <- gsub("\\.", " ", colnames(tmp))
+colnames(tmp) <- gsub("^X\\d+\\s", "", colnames(tmp))
+colnames(tmp) <- gsub("\\s+", " ", colnames(tmp))
+tmp <- tmp[complete.cases(tmp),]
+
+
+# # usethis::edit_file(file.path(scriptpath,"Boxplot.R"))
+source((file.path(scriptpath,"Boxplot.R")))
+Boxplot(Result_Folder = Folder_paths$ResultsFolder,
+        Input_data = tmp,
+        Input_SettingsFile = DMA_SettingsFile,
+        Input_SettingsInfo = c(Conditions = "Conditions"),
+        FolderName = NULL,
+        OutputName = "Boxplots")
+
+
+```
+
+ 
+
+# Session information
+
+```{r session_info, echo=FALSE}
+options(width = 120)
+sessioninfo::session_info()
+```
+
+# Bibliography
+
