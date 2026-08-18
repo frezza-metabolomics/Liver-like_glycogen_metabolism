@@ -22,13 +22,15 @@
 #' 1 replicate
 #' 
 
-#FOR WINDOWS USERS ONLY
-convert_clip <- function() {
-  gsub("\\\\", "/", readClipboard())
-}
-#copy the file path from the windows explorer
-pathtoFile <- convert_clip()
+# #FOR WINDOWS USERS ONLY
+# convert_clip <- function() {
+#   gsub("\\\\", "/", readClipboard())
+# }
+# #copy the file path from the windows explorer
+# pathtoFile <- convert_clip()
 #pathtoFile <- "C:/Users/Dimitrios/Desktop/04. AB01 Analysis"
+
+pathtoFile <- getwd()
 
 ### ### ### Load the data ### ### ###
 source("scripts/00_Load_Data.R")
@@ -94,6 +96,22 @@ Heart_Dat <- Heart_Dat %>%
 MetaProVizPCA(data = Heart_Dat, Design = Heart_Exp, Color = "Time", Shape = "Species", Show_Loadings = FALSE,  Scaling = TRUE, 
               OutputPlotName = 'Heart_Colour_Species_Shape_Time')
 
+# Heart and Liver PCA
+library(ggConvexHull)
+#heart and liver
+Heart_Liver_Exp <- Experimental_design %>% filter(Tissue =="Heart" | Tissue =="Liver")     
+Heart_Liver_Dat <-Processed_data %>% filter(row.names(Processed_data) %in% row.names(Heart_Liver_Exp))      
+row.names(Heart_Liver_Dat) == row.names(Heart_Liver_Exp)
+#Heart_Liver_Dat <- Heart_Liver_Dat[, sapply(Heart_Liver_Dat, var) != 0]
+MetaProVizPCA(data = Heart_Liver_Dat, Design = Heart_Liver_Exp, Color = "Tissue", Shape = "Time",
+              Fill = "Species", Show_Loadings = FALSE,  Scaling = TRUE, 
+              OutputPlotName = 'Heart_Liver_Colour_Tissue_Shape_Time_Shape_Species')
+
+#######################################################################
+# Heatmaps
+# Individual Tissues
+plotHeatmaps(Input_data = Heart_Dat, Experimental_design= Heart_Exp, Clustering_Condition = c("Time","Species"), OutputPlotName= "Heatmap_Heart")
+plotHeatmaps(Input_data = Liver_Dat, Experimental_design= Liver_Exp, Clustering_Condition = c("Time","Species"), OutputPlotName= "Heatmap_Liver")
 
 ###############################################################################
 # boxplots
@@ -278,6 +296,49 @@ for(cluster in unique(Metabolite_clusters$Clusters)) {
   
   dev.off()
 }
+
+
+##############################################################################
+# Differential abundance analysis
+
+
+############################################
+# 1a) Naked Mole rat -vs- Mouse time zero all tissues all timepoints
+# Prepare the data
+Processed_data_filtered <- Processed_data#[-which(rownames(Processed_data) == "AB01_069" | rownames(Processed_data) =="AB01_056"),]
+Experimental_design_filtered <- Experimental_design#[-which(rownames(Processed_data) == "AB01_069" | rownames(Processed_data) =="AB01_056"),]
+
+
+DMA_data <-  Processed_data_filtered
+DMA_Exp_design_Species <- Experimental_design_filtered %>% select(Species) %>% rename("Conditions" = "Species")
+
+source("scripts/02_MetaProVizDifferentialMetaboliteAnalysis.R")
+DMA_species_all_tissue_res <-MetaProVizDMA(Input_data =DMA_data, Experimental_design= DMA_Exp_design_Species,
+                                           Condition1 = "MM", Condition2 = "HG", OutputName= 'all_tissues_together_all_timepoints_together')
+
+### Make experimetal design with species and time information
+DMA_Exp_design_Species_Time <- DMA_Exp_design_Species
+DMA_Exp_design_Species_Time[1] <- paste(Experimental_design_filtered$Species, Experimental_design_filtered$Time, sep="_")
+
+# DMA Naked Mole rat -vs- Mouse time zero all tissues  time 00mins
+DMA_species_all_tissue_time_00mins_res <- MetaProVizDMA(Input_data =DMA_data, Experimental_design= DMA_Exp_design_Species_Time,
+                                                        Condition1 = "MM_00mins", Condition2 = "HG_00mins", OutputName= 'all_tissues_together_time_00mins')
+
+# DMA Naked Mole rat -vs- Mouse time zero all tissues  time 05mins
+DMA_species_all_tissue_time_05mins_res <- MetaProVizDMA(Input_data =DMA_data, Experimental_design= DMA_Exp_design_Species_Time,
+                                                        Condition1 = "MM_05mins", Condition2 = "HG_05mins", OutputName = 'all_tissues_together_time_05mins')
+
+# DMA Naked Mole rat -vs- Mouse time zero all tissues  time 10mins
+DMA_species_all_tissue_time_10mins_res <- MetaProVizDMA(Input_data =DMA_data, Experimental_design= DMA_Exp_design_Species_Time,
+                                                        Condition1 = "MM_10mins", Condition2 = "HG_10mins", OutputName = 'all_tissues_together_time_10mins')
+
+# DMA Naked Mole rat -vs- Mouse time zero all tissues  time 30mins
+DMA_species_all_tissue_time_30mins_res <- MetaProVizDMA(Input_data =DMA_data, Experimental_design= DMA_Exp_design_Species_Time,
+                                                        Condition1 = "MM_30mins", Condition2 = "HG_30mins", OutputName = 'all_tissues_together_time_30mins')
+
+# DMA Naked Mole rat -vs- Mouse time zero all tissues  time 60mins
+DMA_species_all_tissue_time_60mins_res <- MetaProVizDMA(Input_data =DMA_data, Experimental_design= DMA_Exp_design_Species_Time,
+                                                        Condition1 = "MM_60mins", Condition2 = "HG_60mins", OutputName = 'all_tissues_together_time_60mins')
 
 
 
